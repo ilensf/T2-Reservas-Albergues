@@ -1,5 +1,5 @@
 Faker==33.1.0
-psycopg2-binary==2.9.13 # Cambiado de 2.910 a 2.9.13 para Python 3.14
+psycopg[binary]==3.2.10 # v3 con libpq embalado, coincide con el import psycopg de src/xera_datos.py
 pymongo==4.10.1
 python-dotenv==1.0.1
 redis==5.2.1
