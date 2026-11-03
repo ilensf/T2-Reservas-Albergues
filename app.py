@@ -35,11 +35,15 @@ def inicializar(r):
         with conn.cursor() as cur:
             cur.execute("SELECT id, prazas FROM albergues")
             cap = {a: p for a, p in cur.fetchall()}
+            cur.execute("SELECT DISTINCT data FROM reservas")
+            datas = [d for (d,) in cur.fetchall()]
             cur.execute("SELECT albergue_id, data, SUM(prazas) FROM reservas GROUP BY albergue_id, data")
             occ = {(a, d): t for a, d, t in cur.fetchall()}
     pipe = r.pipeline()
-    for (a, d), o in occ.items():
-        pipe.set(clave_dispo(a, d), max(0, cap.get(a, 0) - o))
+    for aid, c in cap.items():
+        for d in datas:
+            libres = max(0, c - occ.get((aid, d), 0))
+            pipe.set(clave_dispo(aid, d), libres)
     pipe.execute()
 
 def capacidad(aid):
@@ -52,11 +56,11 @@ def capacidad(aid):
 def reservar(aid, fecha, peregrino, prazas=1):
     r = redis_cli()
     k = clave_dispo(aid, fecha)
-    if r.get(k) is None:
-        c = capacidad(aid)
-        if c is None:
-            return False, "albergue inexistente"
-        r.set(k, c)
+    c = capacidad(aid)
+    if c is None:
+        return False, "albergue inexistente"
+    # Inicialización atómica: non sobrescribe se xa existe
+    r.set(k, c, nx=True)
     resto = r.decrby(k, prazas)
     if resto < 0:
         r.incrby(k, prazas)
@@ -102,7 +106,7 @@ def proba_superventa(aid, fecha, pz_tot, n):
     acc = {"n": 0}
     lock = threading.Lock()
     def i(x):
-        ok, _ = reservar(aid, fecha, x+1, 1)
+        ok, _ = reservar(aid, fecha, 1, 1)
         if ok:
             with lock:
                 acc["n"] += 1
@@ -148,9 +152,9 @@ def main():
     ok, msg = reservar(1, hoy, 1001, 1)
     print("Reserva ejemplo:", ok, msg)
     proba_superventa(5, date(2027, 5, 15), 3, 20)
-    r.delete(clave_cache("Frances", date(2027, 5, 12)))
-    res1, o1 = dispo_camino("Frances", date(2027, 5, 12))
-    res2, o2 = dispo_camino("Frances", date(2027, 5, 12))
+    r.delete(clave_cache("Francés", date(2027, 5, 12)))
+    res1, o1 = dispo_camino("Francés", date(2027, 5, 12))
+    res2, o2 = dispo_camino("Francés", date(2027, 5, 12))
     print("Cache:", o1, o2, len(res1), len(res2))
     mediciones(1, hoy)
 
