@@ -54,7 +54,7 @@ services:
       - p1_net
 
   adminer:
-    image: adminer
+    image: adminer:4
     container_name: p1_adminer
     ports:
       - "8080:8080"

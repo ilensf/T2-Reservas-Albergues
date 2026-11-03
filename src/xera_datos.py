@@ -146,7 +146,7 @@ def xera_fichas(albergues, rng, fake):
         ficha = {
             "albergue_id": albergue_id,
             "nome": nome_albergue,
-            "camino": rng.choice(caminos),
+            "camino": albergue["camino"] if isinstance(albergue, dict) else albergue[2],
             "servizos": rng.sample(servizos_base, k=rng.randint(1, len(servizos_base))),
             "horario": {
                 "apertura": f"{rng.randint(11, 14):02d}:00",
@@ -265,7 +265,7 @@ def carga_postgres(albergues, peregrinos, reservas):
                     "INSERT INTO reservas (id, albergue_id, peregrino_id, data, prazas) VALUES (%(id)s, %(albergue_id)s, %(peregrino_id)s, %(data)s, %(prazas)s)",
                     reservas
                 )
-                cur.execute("SELECT setval(pg_get_serial_sequence('reservas', 'id'), COALESCE(MAX(id), 1)) FROM reservas;")
+                cur.execute("SELECT setval(pg_get_serial_sequence('reservas', 'id'), COALESCE(MAX(id), 0)) FROM reservas;")
                 
                 conn.commit()
                 print("  [PostgreSQL] Carga completada con éxito.")
@@ -279,8 +279,9 @@ def carga_mongo(fichas):
     try:
         client = MongoClient(
             host=os.getenv("MONGO_HOST", "localhost"),
-            username=os.getenv("MONGO_INITDB_ROOT_USERNAME", "p1"),
-            password=os.getenv("MONGO_INITDB_ROOT_PASSWORD", "cambiame")
+            username=os.getenv("MONGO_USER", os.getenv("MONGO_INITDB_ROOT_USERNAME", "p1")),
+            password=os.getenv("MONGO_PASSWORD", os.getenv("MONGO_INITDB_ROOT_PASSWORD", "cambiame")),
+            authSource="admin",
         )
         db = client[os.getenv("MONGO_DB", "albergues")]
         coleccion = db["fichas_albergues"]
