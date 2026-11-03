@@ -265,6 +265,7 @@ def carga_postgres(albergues, peregrinos, reservas):
                     "INSERT INTO reservas (id, albergue_id, peregrino_id, data, prazas) VALUES (%(id)s, %(albergue_id)s, %(peregrino_id)s, %(data)s, %(prazas)s)",
                     reservas
                 )
+                cur.execute("SELECT setval(pg_get_serial_sequence('reservas', 'id'), COALESCE(MAX(id), 1)) FROM reservas;")
                 
                 conn.commit()
                 print("  [PostgreSQL] Carga completada con éxito.")
